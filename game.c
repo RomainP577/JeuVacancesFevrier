@@ -32,14 +32,26 @@ struct Enemy
     int Enemy_Fight;
 };
 
+struct Shop
+{
+    char Obj_Name[64];
+    int Obj_Price;
+    int Slot;
+    int ID;
+    char Effet[64];
+};
+
 typedef struct Lieu Lieu;
 typedef struct Perso Perso;
 typedef struct Enemy Enemy;
+typedef struct Shop Shop;
 
 int i;
 int j;
 
 int Gold=10;
+int Got_Gemme=0;
+int Got_Potion=0;
 
 int Access=0;
 int HPCost_Light=30;
@@ -51,8 +63,10 @@ int NB_Persos=3;
 int NB_Enemy=0;
 int Room_Donjon=0;
 int Tour_Combat=0;
+int Gemme_Debuff=500;
 
 int Target=-1;
+int Enemy_Target=0;
 
 int main (){
 	
@@ -73,11 +87,12 @@ int main (){
 		Lieu a_Lieux[4];
 		Perso a_Perso[3];
 		Enemy a_Enemy[4];
+        Shop a_Shop[2];
 
 		//Declaration lieux
 		//Lieu example = {"Lieu_Name", Exist, details, Gold, HP, ID};
 		Lieu Boutique = {"Boutique", 1, "Lieu1Details", 0, 0, 0};
-		Lieu Auberge = {"Auberge", 1, "Lieu1Details", -2, +8, 1};
+		Lieu Auberge = {"Auberge", 1, "Lieu1Details", -2, 10, 1};
 		Lieu Arene = {"Arene (require 20+ gold)", 1, "Lieu1Details", 26, -12, 2};
 		Lieu Donjon = {"Donjon (require 80+ HP)", 1, "Lieu1Details", 14, -20, 3};
 		
@@ -91,7 +106,7 @@ int main (){
 		//Perso example ={"Perso_Name", HP_Perso, HPMax_Perso, MP_Perso, Att_Perso, Shield, CpacitéName};
 		Perso Chevalier = {"Chevalier", 150, 150, 50, 30, 0, "Protection"};
 		Perso Archer = {"Archer", 75, 75, 75, 50, 0, "Tir multiple"};
-		Perso Pretre = {"Pretre", 100, 100, 100, 60, 0, "Soin"};
+		Perso Pretre = {"Pretre", 100, 100, 100, 40, 0, "Soin"};
 		
 		//Array Perso
 		a_Perso[0] = Chevalier;
@@ -103,13 +118,23 @@ int main (){
 		Enemy Gobelin = {"Gobelin", 100, 30, 15, 0};
         Enemy Squelette = {"Squelette", 100, 30, 20, 0};
 		Enemy Troll = {"Troll", 175, 50, 30, 0};
-		Enemy Dragon = {"Dragon", 1000, 100, 35, 0};
+		Enemy Dragon = {"Dragon", 800, 100, 35, 0};
 		
 		//Array Enemy
 		a_Enemy[0] = Gobelin;
 		a_Enemy[1] = Squelette;
 		a_Enemy[2] = Troll;
 		a_Enemy[3] = Dragon;
+        
+        //Declaration Objets
+		//Enemy Objets ={"Obj_Name", Price, slot, ID};
+        Shop Potion = {"Potion", 5, 1, 0, "Evite une mort imminente."};
+        Shop Gemme = {"Gemme", 30, 1, 1, "Effet inconnu."};
+        
+        //Array Shop
+        a_Shop[0] = Potion;
+        a_Shop[1] = Gemme;
+        
 		
         //prise de direction
         printf("Plusieurs chemins s'offrent a vous.\n");
@@ -142,7 +167,55 @@ int main (){
 			{
 				printf("Vous etes : %s \n", a_Lieux[ChoixLieu].Lieu_Name);
                 printf("Vous entrez dans une boutique poussiereuse.\n");
-                Access=1;
+                
+                for (i=0; i<2; i++)
+                {
+                    if (a_Shop[i].Slot==1)
+                    {
+                        printf(" %d = %s, %s (%d Or)\n", a_Shop[i].ID, a_Shop[i].Obj_Name, a_Shop[i].Effet, a_Shop[i].Obj_Price);
+                    }
+                }
+                
+                printf("Voulez vous acheter quelque chose ? (%d Gold, 2 = Retour)", Gold);
+                scanf("%d", &Target);
+                
+                if (Target==2)
+                {
+                    Access=1;
+                    printf("Vous sortez de la boutique.");
+                }
+                
+                if (Target!=2)
+                {
+                
+                    if (Target==0)
+                    {
+                        if (a_Shop[0].Obj_Price <= Gold)
+                        {
+                            printf("Vous achetez %s", a_Shop[Target].Obj_Name);
+                            Got_Potion+=1;
+                        }
+                        else 
+                        {
+                            printf("Vous n'avez pas assez d'or.\n");
+                            printf("Vous sortez de la boutique.\n");
+                        }
+                    }
+                    
+                    if (Target==1)
+                    {
+                        if (a_Shop[1].Obj_Price <= Gold)
+                        {
+                            printf("Vous achetez %s", a_Shop[Target].Obj_Name);
+                            Got_Gemme=1;
+                        }
+                        else 
+                        {
+                            printf("Vous n'avez pas assez d'or.\n");
+                            printf("Vous sortez de la boutique.\n");
+                        }
+                    }
+                }
 			}
             
             if (ChoixLieu==1)
@@ -180,11 +253,10 @@ int main (){
 			
 			if (ChoixLieu==3)
             {
-                if (HP>=80)
+                if (NB_Persos>=2)
                 {
                     printf("Vous etes : %s \n", a_Lieux[ChoixLieu].Lieu_Name);
                     printf("Vous entrez dans le donjon.\n");
-                    Access=1;
                     In_Fight=1;
                     
                     if(Room_Donjon==0)
@@ -207,10 +279,15 @@ int main (){
                         printf("Arrives en bas des escaliers, vous entrez dans une grande salle ou un dragon vous attaque.");
                         a_Enemy[3].Enemy_Fight = 1; //Dragon
                         NB_Enemy+=1;
+                        
+                        if (Got_Gemme==1)
+                        {
+                            printf("Votre gemme afaiblit le dragon (-%d HP).", Gemme_Debuff);
+                            a_Enemy[3].HP_Enemy -= Gemme_Debuff;
+                        }
                     }
-                    
                 }
-                if (HP<=80)
+                if (NB_Persos<=1)
                 {
                     printf("Vous etes : %s \n", a_Lieux[ChoixLieu].Lieu_Name);
                     printf("Vous n'avez pas assez d'energie pour vous engouffrez dans un donjon, vous passez votre chemin.\n");
@@ -224,6 +301,7 @@ int main (){
             while (In_Fight == 1)
             {
                 printf("\n");
+                printf("---------------------------------------\n");
                 printf("Vous vous battez contre %d ennemi(s) !\n", NB_Enemy);
                 
                 //Affichage HP enemy
@@ -237,12 +315,23 @@ int main (){
                 
                 printf("\n");
                 
-                //Affichage HP persos
+                //Affichage HP persos/ reset shield
                 for (i=0; i<3; i++)
                 {
                     if (a_Perso[i].HP_Perso>=1)
                     {
-                        printf(" -%s (%d HP)\n", a_Perso[i].Perso_Name, a_Perso[i].HP_Perso);
+                        printf(" -%s (%d HP) | Shield : ", a_Perso[i].Perso_Name, a_Perso[i].HP_Perso);
+                    }
+                    
+                    if (a_Perso[i].Shield <= 0)
+                    {
+                        printf("Off\n");
+                    }
+                    
+                    if (a_Perso[i].Shield ==1)
+                    {
+                        a_Perso[i].Shield -=1;
+                        printf("On\n");
                     }
                 }
                 
@@ -257,35 +346,48 @@ int main (){
                 {
                     if (a_Perso[i].HP_Perso>0)
                     {
+                        printf("---------------------------------------\n");
                         printf("%s se prepare.\n", a_Perso[i].Perso_Name);
                         printf(" 0 = Attaque\n 1 = Defense\n 2 = Special\n");
                         printf("Que voulez vous faire ?\n");
                         scanf("%d", &ChoixAction);
+                        printf("\n");
 
                         //Attaque
                         if (ChoixAction==0)
                         {
                             printf("Vous choissisez d'attaquer.\n");
                             printf("Vous infligez %d de degats.\n", a_Perso[i].Att_Perso);
+                            printf("\n");
                             
                             if (Room_Donjon==0)
                             {
                                 a_Enemy[2].HP_Enemy -= a_Perso[i].Att_Perso;
                                 //printf(" -%s (%d HP)\n", a_Enemy[2].Enemy_Name, a_Enemy[i].HP_Enemy);
-                                
                             }
                             
                             if (Room_Donjon==1)
                             {
-                                a_Enemy[0].HP_Enemy -= a_Perso[i].Att_Perso;
-                                a_Enemy[1].HP_Enemy -= a_Perso[i].Att_Perso;
+                                printf(" 0 = Gobelin\n 1 = Squelette\n");
+                                printf("Choississez la cible.\n");
+                                scanf("%d", &Target);
+                                
+                                if (Target == 0)
+                                {
+                                    a_Enemy[0].HP_Enemy -= a_Perso[i].Att_Perso;
+                                }
+                                
+                                if (Target == 1)
+                                {
+                                    a_Enemy[1].HP_Enemy -= a_Perso[i].Att_Perso;
+                                }
                                 //printf(" -%s (%d HP)\n", a_Enemy[0].Enemy_Name, a_Enemy[i].HP_Enemy);
                                 //printf(" -%s (%d HP)\n", a_Enemy[1].Enemy_Name, a_Enemy[i].HP_Enemy);
                             }
                             
                             if (Room_Donjon==2)
                             {
-                                a_Enemy[2].HP_Enemy -= a_Perso[i].Att_Perso;
+                                a_Enemy[3].HP_Enemy -= a_Perso[i].Att_Perso;
                                 //printf(" -%s (%d HP)\n", a_Enemy[2].Enemy_Name, a_Enemy[i].HP_Enemy);
                             }
                         }
@@ -306,16 +408,31 @@ int main (){
                             {
                                 printf("Chevalier lance une protection.\n");
                                 printf(" 0 = Chevalier\n 1 = Archer\n 2 = Pretre\n");
-                                printf("Choississez la (100% Resist/1tour)\n");
+                                printf("Choississez la cible (100% Resist/3tour)\n");
                                 scanf("%d", &Target);
                                 printf("%s recoit une protection.\n", a_Perso[Target].Perso_Name);
-                                a_Perso[Target].Shield = 1;
+                                a_Perso[Target].Shield = 3;
                             }
 
                             if (i==1)
                             {
                                 printf("Archer lance un tir multiple.\n");
-                                a_Enemy[2].HP_Enemy -= a_Perso[i].Att_Perso;
+                                
+                                if (Room_Donjon==0)
+                                {
+                                    a_Enemy[2].HP_Enemy -= a_Perso[i].Att_Perso;
+                                }
+                                
+                                if (Room_Donjon==1)
+                                {
+                                    a_Enemy[0].HP_Enemy -= a_Perso[i].Att_Perso;
+                                    a_Enemy[1].HP_Enemy -= a_Perso[i].Att_Perso;
+                                }
+                                
+                                if (Room_Donjon==2)
+                                {
+                                    a_Enemy[3].HP_Enemy -= a_Perso[i].Att_Perso;
+                                }
                             }
 
                             if (i==2)
@@ -327,11 +444,22 @@ int main (){
                                 printf("%s recoit un sort de soin.\n", a_Perso[Target].Perso_Name);
                                 a_Perso[Target].HP_Perso += 50;
                             }
-                        }
-                        
-                        if (a_Enemy[2].HP_Enemy<1)
-                        {
                             
+                            //Enemy attack
+                            for (j=0; j<4; j++)
+                            {
+                                if (a_Enemy[j].Enemy_Fight==1)
+                                {
+                                    //verification perso 1ere ligne
+                                    if (a_Perso[Enemy_Target].HP_Perso<=0)
+                                    {
+                                        Enemy_Target += 1;
+                                    }
+                                    
+                                    a_Perso[Enemy_Target].HP_Perso -= a_Enemy[j].Att_Enemy;
+                                    printf("%s inflige %d a %s.\n", a_Enemy[j].Enemy_Name, a_Enemy[j].Att_Enemy, a_Perso[Enemy_Target].Perso_Name);
+                                }
+                            }
                         }
                     }
                 }
@@ -341,39 +469,54 @@ int main (){
                 {
                     if (a_Perso[i].HP_Perso<=0)
                     {
-                        NB_Persos -= 1;
+                        if (Got_Potion < 1)
+                        {
+                            NB_Persos -= 1;
+                        }
+                        
+                        else
+                        {
+                            printf("Potion utilisée (Restantes : %d)", Got_Potion);
+                        }
+                    }
+                    
+                    if (NB_Persos<1)
+                    {
+                        In_Fight=0;
                     }
                 }
                 
                 //Enemy death check
-                for (i=0; i<4; i++)
+                for (i=0; i<3; i++)
                 {
                     if (a_Enemy[i].HP_Enemy<=0)
                     {
                         a_Enemy[i].Enemy_Fight=0;
-                        NB_Enemy-=1;
+                        NB_Enemy -= 1;
                     }
                 }
                 
                 //Donjon progression
                 if (NB_Enemy<1)
+                {
+                    if (Room_Donjon<=1)
                     {
-                        if (Room_Donjon<=1)
-                        {
-                            Room_Donjon+=1;
-                            printf("Ennemi(s) detruits, revenez au donjon pour continuer de l'explorer\n");
-                            Access=1;
-                        }
-                        
-                        else if (Room_Donjon>=2)
-                        {
-                            In_Fight=0;
-                            printf("Le Dragon est mort, vous récuperez son butin (100 Gold)\n");
-                            Gold += 100;
-                            Access=1;
-                        }
-                        
+                        In_Fight=0;
+                        Room_Donjon+=1;
+                        printf("Ennemi(s) detruits, revenez au donjon pour continuer de l'explorer.\n");
+                        Access=1;
                     }
+
+                    else if (Room_Donjon>=2)
+                    {
+                        In_Fight=0;
+                        printf("Le Dragon est mort, vous recuperez son butin (100 Gold)\n");
+                        Gold += 100;
+                        Access=1;
+                    }
+
+                }
+                printf("Room : %d \n", Room_Donjon);
             }
             
             Tour_Combat=0;
@@ -392,16 +535,16 @@ int main (){
                 
 				for (i=0; i<3; i++)
                 {
-                    if (a_Perso[i].HP_Perso<a_Perso[i].HPMax_Perso)
+                    if (a_Perso[i].HP_Perso < a_Perso[i].HPMax_Perso)
                     {
                         a_Perso[i].HP_Perso += a_Lieux[ChoixLieu].HPGain;
                     }
                 }
-                
 			}
 			
             //Affichage Gold
 			printf("Vous avez %d or \n", Gold);
+            printf("\n");
             
 			//Affichage HP persos
             for (i=0; i<3; i++)
@@ -412,6 +555,7 @@ int main (){
                 }
             }
 		}
+        printf("\n");
 	}	
 	printf("Votre groupe d'aventure est mort.");
 }
